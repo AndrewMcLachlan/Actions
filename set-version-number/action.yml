@@ -17,4 +17,4 @@ runs:
 outputs: 
   version:
     description: 'The version number'
-    value: ${{ steps.getversion.outputs.version }}
+    value: ${{ steps.get-version.outputs.version }}
