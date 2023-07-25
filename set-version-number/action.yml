@@ -13,7 +13,7 @@ runs:
   steps:
     - shell: pwsh
       id: get-version
-      run: ${{ github.action_path }}\GetVersion.ps1 -FilePath ${{ inputs.filePath }} -VersionPropertyName ${{ inputs.versionPropertyName }}
+      run: ${{ github.action_path }}/GetVersion.ps1 -FilePath ${{ inputs.filePath }} -VersionPropertyName ${{ inputs.versionPropertyName }}
 outputs:
   version:
     description: 'The version number'
