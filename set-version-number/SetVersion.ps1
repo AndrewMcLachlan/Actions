@@ -22,4 +22,5 @@ if (!$parsed) {
 
 $newVersion = [System.Version]::new($version.Major, $version.Minor, $RunNumber)
 
-Write-Host "::set-output name=version::$($newVersion.ToString())"
+Write-Output "Version is $($newVersion.ToString())"
+Write-Output "version=$($newVersion.ToString())" >> $Env:GITHUB_OUTPUT
