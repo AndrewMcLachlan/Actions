@@ -24,4 +24,5 @@ $newVersion = [System.Version]::new($version.Major, $version.Minor, $RunNumber)
 
 Write-Output "Version is $($newVersion.ToString())"
 Write-Output "version=$($newVersion.ToString())" >> $Env:GITHUB_OUTPUT
-Write-Output "Output is $Env:GITHUB_OUTPUT"
+Write-Output "Output file is $Env:GITHUB_OUTPUT"
+Get-Content $Env:GITHUB_OUTPUT | Write-Output
