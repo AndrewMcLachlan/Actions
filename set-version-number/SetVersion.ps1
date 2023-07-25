@@ -7,18 +7,19 @@ param (
     [string]$RunNumber
 )
 
-$res = Select-Xml -Path $FilePath -XPath = "/Project/PropertyGroup/$VersionPropertyName"
+$res = Select-Xml -Path $FilePath -XPath "/Project/PropertyGroup/$VersionPropertyName"
 
 if ($null -eq $res) {
     throw "Could not find version property '$VersionPropertyName' in file '$FilePath'"
 }
 
-$parsed = [System.Version]::TryParse($res.Node.'#text', [out]$version);
+$version = $null
+$parsed = [System.Version]::TryParse($res.Node.'#text', [ref]$version);
 
 if (!$parsed) {
     throw "Could not parse version '$($res.Node.'#text')' in file '$FilePath'"
 }
 
-$version.Build = $RunNumber
+$newVersion = [System.Version]::new($version.Major, $version.Minor, $RunNumber)
 
-Write-Host "::set-output name=version::$($version.ToString())"
+Write-Host "::set-output name=version::$($newVersion.ToString())"
