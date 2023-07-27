@@ -2,11 +2,8 @@ name: 'Set Version Number from NPM'
 author: 'Andrew McLachlan'
 description: 'Get the version number from a given package.json file and set the build portion to the run number'
 inputs:
-  filePath:
-    description: 'Path to the file containing the version number'
-    required: true
-  versionPropertyName:
-    description: 'Name of the XML property containing the version number'
+  packageFilePath:
+    description: 'Path to the package.json file containing the version number'
     required: true
 runs:
   using: composite
