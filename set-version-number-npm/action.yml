@@ -10,7 +10,7 @@ runs:
   steps:
     - shell: pwsh
       id: get-version
-      run: ${{ github.action_path }}/SetVersion.ps1 -FilePath ${{ inputs.filePath }} -VersionPropertyName ${{ inputs.versionPropertyName }} -RunNumber ${{ github.run_number }}
+      run: ${{ github.action_path }}/SetVersion.ps1 -PackageFilePath ${{ inputs.packageFilePath }} --RunNumber ${{ github.run_number }}
 outputs: 
   version:
     description: 'The version number'
