@@ -1,0 +1,10 @@
+; Top-most EditorConfig file
+root = true
+
+; 4-column space indentation
+[*]
+indent_style = space
+indent_size = 4
+
+[*.{config,xml,html,xsd,xsl,xslt,cshtml,html,csproj,proj,msbuild,vbproj,vstemplate,transform,props,yml}]
+indent_size = 2
