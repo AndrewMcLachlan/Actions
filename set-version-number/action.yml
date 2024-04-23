@@ -2,7 +2,7 @@ name: 'Set Version Number from MSBuild props'
 author: 'Andrew McLachlan'
 description: 'Get the version number from a given file and set the build portion to the run number'
 inputs:
-  Project:
+  project:
     description: 'Path to the project containing the version number'
     required: true
   versionPropertyName:
@@ -13,7 +13,7 @@ runs:
   steps:
     - shell: pwsh
       id: get-version
-      run: ${{ github.action_path }}/SetVersion.ps1 -Project ${{ inputs.filePath }} -VersionPropertyName ${{ inputs.versionPropertyName }} -RunNumber ${{ github.run_number }}
+      run: ${{ github.action_path }}/SetVersion.ps1 -Project ${{ inputs.project }} -VersionPropertyName ${{ inputs.versionPropertyName }} -RunNumber ${{ github.run_number }}
 outputs:
   version:
     description: 'The version number'
