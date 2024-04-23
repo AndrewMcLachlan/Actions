@@ -1,23 +1,19 @@
 param (
     [Parameter(Mandatory = $true)]
-    [string]$FilePath,
+    [string]$Project,
     [Parameter(Mandatory = $true)]
     [string]$VersionPropertyName,
     [Parameter(Mandatory = $true)]
     [string]$RunNumber
 )
 
-$res = Select-Xml -Path $FilePath -XPath "/Project/PropertyGroup/$VersionPropertyName"
-
-if ($null -eq $res) {
-    throw "Could not find version property '$VersionPropertyName' in file '$FilePath'"
-}
+$res = dotnet msbuild -getProperty:Version $Project
 
 $version = $null
-$parsed = [System.Version]::TryParse($res.Node.'#text', [ref]$version);
+$parsed = [System.Version]::TryParse($res, [ref]$version);
 
 if (!$parsed) {
-    throw "Could not parse version '$($res.Node.'#text')' in file '$FilePath'"
+    throw "Could not parse version '$($res)' in project '$Project'"
 }
 
 $newVersion = [System.Version]::new($version.Major, $version.Minor, $RunNumber)
