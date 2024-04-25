@@ -2,7 +2,7 @@
 
 The Set Version Number and Set Version Number NPM actions use information in code to determine a version number variable. You are responsible for supplying this version when compiling your code.
 
-## Set Version Numer
+## Set Version Number
 
 Evaludates an MSBuild property to return the version number, with the `Build` portion set to the current workflow run number.
 
@@ -55,7 +55,7 @@ steps.set-version-number.outputs.version - 2.1.50
 steps.set-file-version-number.outputs.version - 2024.4.50
 ```
 
-## Set Version NPM
+## Set Version Number NPM
 
 Returns the version number using the NPM `package.json` file, with the `Build` portion set to the current workflow run number.
 
