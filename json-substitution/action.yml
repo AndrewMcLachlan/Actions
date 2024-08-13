@@ -1,0 +1,25 @@
+name: 'Substitute JSON'
+author: 'Andrew McLachlan'
+description: 'Substitute values in a JSON file'
+inputs:
+  json:
+    description: 'Path to the JSON file'
+    required: true
+  values:
+    description: 'Values to substitute'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: sudo apt-get install jq -y
+    - shell: bash
+      run: |
+      replacements={{ inputs.values }}
+
+      echo "$replacements" | jq -c '.[]' | while read i; do
+        path=$(echo $i | jq -r '.path')
+        value=$(echo $i | jq -r '.value')
+        jq "$path = \"$value\"" {{ inputs.json }} > tmp.json && mv tmp.json {{ inputs.json }}
+      done
