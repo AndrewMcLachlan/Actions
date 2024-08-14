@@ -53,10 +53,6 @@ jobs:
           name: ${{ inputs.artifact-name }}
           path: ${{ github.workspace }}
 
-      - name: list
-        run: |
-          ls -la
-
       #- name: 'Substitute values in appsettings'
       #  if: ${{ inputs.appsettings }}
       #  uses: andrewmclachlan/actions/json-substitution@main
@@ -69,6 +65,7 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: '${{ github.workspace }}'
+          clean: false
 
       - name: logout
         run: |

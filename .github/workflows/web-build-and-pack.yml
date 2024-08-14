@@ -1,0 +1,76 @@
+name: Build and Pack
+
+on:
+    workflow_call:
+      inputs:
+        solution:
+          required: true
+          type: string
+        web-project-path:
+          required: true
+          type: string
+        package-lock-path:
+          required: true
+          type: string
+        web-job-project-path:
+          required: false
+          type: string
+        octopus-package-name:
+          required: true
+          type: string
+      secrets:
+        cross-repo-package-token:
+          required: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+
+      with:
+        dotnet-version: 8.x
+        source-url: https://nuget.pkg.github.com/AndrewMcLachlan/index.json
+      env:
+        NUGET_AUTH_TOKEN: ${{ secrets.cross-repo-package-token }}
+
+    - name: Set version number
+      id: set-version-number
+      uses: andrewmclachlan/actions/set-version-number@v2
+      with:
+        filePath: 'Common.props'
+        versionPropertyName: 'Version'
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ inputs.solution }}
+
+    - name: Setup node and npm
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20
+        cache: npm
+        cache-dependency-path: ${{ inputs.package-lock-path }}
+        registry-url: "https://npm.pkg.github.com"
+
+    - name: Publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.cross-repo-package-token }}
+      run: dotnet publish ${{ inputs.web-project-path }} --output ${{ github.workspace }}/publish --configuration Release --p:Version=${{ steps.set-version-number.outputs.version }} --p:FileVersion=${{ steps.set-version-number.outputs.version }} --no-restore
+
+    - name: Publish WebJob
+      if: inputs.web-job-project-path != ''
+      run: 'dotnet publish ${{inputs.web-job-project-path}} --output ${{ github.workspace }}/publish/App_Data/jobs/triggered/Recurring --configuration Release'
+    # - name: Install Octopus CLI
+    #   uses: OctopusDeploy/install-octopus-cli-action@v3
+    #   with:
+    #     version: latest
+    # - name: Create artifacts folder
+    #   run: mkdir ${{ github.workspace }}/artifacts
+    # - name: Package
+    #   env:
+    #     OCTOPUS_URL: 'https://mclachlan.octopus.app'
+    #     OCTOPUS_API_KEY: 'FAKE'
+    #     OCTOPUS_SPACE: Default
+    #   run: octopus package zip create --id ${{ inputs.octopus-package-name }} --version ${{ steps.set-version-number.outputs.version }} --base-path ${{ github.workspace }}/publish --out-folder ${{ github.workspace }}/artifacts
