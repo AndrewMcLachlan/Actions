@@ -10,14 +10,14 @@ on:
           description: 'Artifact name'
           type: string
           required: true
-        appsettings:
-          description: 'Appsettings file name'
-          type: string
-          required: false
-        substitutions:
-          description: 'JSON value substitutions in jq format'
-          type: string
-          required: false
+       #appsettings:
+       #  description: 'Appsettings file name'
+       #  type: string
+       #  required: false
+       #substitutions:
+       #  description: 'JSON value substitutions in jq format'
+       #  type: string
+       #  required: false
     secrets:
       AZURE_CLIENT_ID:
         description: 'Azure client ID'
@@ -53,12 +53,12 @@ jobs:
           name: ${{ inputs.artifact-name }}
           path: ${{ github.workspace }}
 
-      - name: 'Substitute values in appsettings'
-        if: ${{ inputs.appsettings }}
-        uses: andrewmclachlan/actions/json-substitution@main
-        with:
-          file: ${{ github.workspace }}/${{ inputs.appsettings }}
-          values: ${{ inputs.substitutions }}
+      #- name: 'Substitute values in appsettings'
+      #  if: ${{ inputs.appsettings }}
+      #  uses: andrewmclachlan/actions/json-substitution@main
+      #  with:
+      #    file: ${{ github.workspace }}/${{ inputs.appsettings }}
+      #    values: ${{ inputs.substitutions }}
 
       - name: 'Run Azure webapp deploy action using publish profile credentials'
         uses: azure/webapps-deploy@v3
