@@ -53,6 +53,10 @@ jobs:
           name: ${{ inputs.artifact-name }}
           path: ${{ github.workspace }}
 
+      - name: list
+        run: |
+          ls -la
+
       #- name: 'Substitute values in appsettings'
       #  if: ${{ inputs.appsettings }}
       #  uses: andrewmclachlan/actions/json-substitution@main
