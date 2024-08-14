@@ -2,9 +2,37 @@
 
 The Set Version Number and Set Version Number NPM actions use information in code to determine a version number variable. You are responsible for supplying this version when compiling your code.
 
+## JSON Substitution
+
+Replace values in a JSON file using jq.
+
+### Example
+
+```yaml
+name: Build
+on:
+  push:
+    branches:
+      - "master"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        file: './appsettings.json'
+        values: |
+          [
+            {"path": ".Logging.LogLevel.Default", "value": "Debug"},
+            {"path": ".ConnectionStrings.DefaultConnection", "value": "Server=newhost;Database=newdb;User Id=newuser;Password=newpassword;"}
+          ]
+```
+
 ## Set Version Number
 
-Evaludates an MSBuild property to return the version number, with the `Build` portion set to the current workflow run number.
+Evaluates an MSBuild property to return the version number, with the `Build` portion set to the current workflow run number.
 
 ### Example
 
