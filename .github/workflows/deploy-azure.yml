@@ -65,6 +65,7 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: '${{ github.workspace }}'
+          clean: false
 
       - name: logout
         run: |
