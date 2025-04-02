@@ -15,6 +15,11 @@ on:
           type: string
           required: false
           default: ''
+        clean:
+          description: 'Clean the app folder before deploying'
+          type: boolean
+          required: false
+          default: false
        #appsettings:
        #  description: 'Appsettings file name'
        #  type: string
@@ -36,6 +41,9 @@ on:
       AZURE_WEBAPP_NAME:
         description: 'Azure webapp name'
         required: true
+      AZURE_WEBAPP_SLOT_NAME:
+        description: 'Azure webapp slot name'
+        required: false
 
 permissions:
   id-token: write
@@ -63,8 +71,8 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: '${{ github.workspace }}'
-          clean: false
-          slot-name: ${{ inputs.slot-name }}
+          clean: ${{ inputs.clean }}
+          slot-name: ${{ secrets.AZURE_WEBAPP_SLOT_NAME }}
 
       - name: logout
         run: |
