@@ -10,6 +10,11 @@ on:
           description: 'Artifact name'
           type: string
           required: true
+        slot-name:
+          description: 'Azure Web App deplyment slot name'
+          type: string
+          required: false
+          default: ''
        #appsettings:
        #  description: 'Appsettings file name'
        #  type: string
@@ -53,19 +58,13 @@ jobs:
           name: ${{ inputs.artifact-name }}
           path: ${{ github.workspace }}
 
-      #- name: 'Substitute values in appsettings'
-      #  if: ${{ inputs.appsettings }}
-      #  uses: andrewmclachlan/actions/json-substitution@main
-      #  with:
-      #    file: ${{ github.workspace }}/${{ inputs.appsettings }}
-      #    values: ${{ inputs.substitutions }}
-
       - name: 'Run Azure webapp deploy action using publish profile credentials'
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: '${{ github.workspace }}'
           clean: false
+          slot-name: ${{ inputs.slot-name }}
 
       - name: logout
         run: |
