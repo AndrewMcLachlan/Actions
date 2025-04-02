@@ -41,9 +41,6 @@ on:
       AZURE_WEBAPP_NAME:
         description: 'Azure webapp name'
         required: true
-      AZURE_WEBAPP_SLOT_NAME:
-        description: 'Azure webapp slot name'
-        required: false
 
 permissions:
   id-token: write
@@ -72,7 +69,7 @@ jobs:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: '${{ github.workspace }}'
           clean: ${{ inputs.clean }}
-          slot-name: ${{ secrets.AZURE_WEBAPP_SLOT_NAME }}
+          slot-name: ${{ inputs.slot-name }}
 
       - name: logout
         run: |
