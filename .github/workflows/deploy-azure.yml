@@ -11,7 +11,7 @@ on:
           type: string
           required: true
         slot-name:
-          description: 'Azure Web App deplyment slot name'
+          description: 'Azure Web App deployment slot name'
           type: string
           required: false
           default: ''
