@@ -6,10 +6,6 @@ on:
           description: 'Environment to deploy to'
           type: string
           required: true
-        artifact-name:
-          description: 'Artifact name'
-          type: string
-          required: true
         app-name:
           description: 'Azure Web App name'
           type: string
@@ -17,21 +13,11 @@ on:
         slot-name:
           description: 'Azure Web App deployment slot name'
           type: string
-          required: false
-          default: ''
-        clean:
-          description: 'Clean the app folder before deploying'
-          type: boolean
-          required: false
-          default: false
-       #appsettings:
-       #  description: 'Appsettings file name'
-       #  type: string
-       #  required: false
-       #substitutions:
-       #  description: 'JSON value substitutions in jq format'
-       #  type: string
-       #  required: false
+          required: true
+        resource-group:
+          description: 'Azure resource group name'
+          type: string
+          required: true
     secrets:
       AZURE_CLIENT_ID:
         description: 'Azure client ID'
@@ -58,19 +44,8 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: 'Download artifact'
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.artifact-name }}
-          path: ${{ github.workspace }}
-
-      - name: 'Run Azure webapp deploy action using publish profile credentials'
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ inputs.app-name }}
-          package: '${{ github.workspace }}'
-          clean: ${{ inputs.clean }}
-          slot-name: ${{ inputs.slot-name }}
+      - name: "Swap slots"
+        run: az webapp deployment slot swap -s ${{ inputs.slot-name }} -n ${{ inputs.app-name }} -g ${{ inputs.resource-group }}
 
       - name: logout
         run: |
