@@ -10,6 +10,10 @@ on:
           description: 'Artifact name'
           type: string
           required: true
+        app-name:
+          description: 'Azure Web App name'
+          type: string
+          required: true
         slot-name:
           description: 'Azure Web App deployment slot name'
           type: string
@@ -38,9 +42,6 @@ on:
       AZURE_SUBSCRIPTION_ID:
         description: 'Azure subscription ID'
         required: true
-      AZURE_WEBAPP_NAME:
-        description: 'Azure webapp name'
-        required: true
 
 permissions:
   id-token: write
@@ -66,7 +67,7 @@ jobs:
       - name: 'Run Azure webapp deploy action using publish profile credentials'
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          app-name: ${{ inputs.app-name }}
           package: '${{ github.workspace }}'
           clean: ${{ inputs.clean }}
           slot-name: ${{ inputs.slot-name }}
