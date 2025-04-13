@@ -38,7 +38,7 @@ jobs:
 
     - name: Set version number
       id: set-version-number
-      uses: andrewmclachlan/actions/set-version-number@v2
+      uses: andrewmclachlan/actions/set-version-number@v3
       with:
         filePath: 'Common.props'
         versionPropertyName: 'Version'
