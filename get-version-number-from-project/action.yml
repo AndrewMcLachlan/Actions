@@ -1,0 +1,23 @@
+name: 'Get Major and Minor version numbers from MSBuild props'
+author: 'Andrew McLachlan'
+description: 'Get the major and minor number from a given file'
+inputs:
+  project:
+    description: 'Path to the project containing the version number'
+    required: true
+  versionPropertyName:
+    description: 'Name of the MSBuild property containing the version number'
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: pwsh
+      id: get-version
+      run: ${{ github.action_path }}/GetVersion.ps1 -Project ${{ inputs.project }} -VersionPropertyName ${{ inputs.versionPropertyName }}
+outputs:
+  major:
+    description: 'The major version number'
+    value: ${{ steps.get-version.outputs.major }}
+  minor:
+    description: 'The minor version number'
+    value: ${{ steps.get-version.outputs.minor }}
