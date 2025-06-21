@@ -67,13 +67,13 @@ jobs:
       uses: andrewmclachlan/actions/set-version-number@v2
       with:
         project: 'src/Example'
-        versionPropertyName: 'Version'
+        version-property-name: 'Version'
     - name: Set file version number
       id: set-file-version-number
       uses: andrewmclachlan/actions/set-version-number@v2
       with:
         project: 'src/Example'
-        versionPropertyName: 'FileVersion'
+        version-property-name: 'FileVersion'
 ```
 
 The outputs would be:
