@@ -2,7 +2,8 @@ name: 'Set Version Number from NPM'
 author: 'Andrew McLachlan'
 description: 'Get the version number from a given package.json file and set the build portion to the run number'
 inputs:
-  packageFilePath:
+  package-file-path:
+    type: string
     description: 'Path to the package.json file containing the version number'
     required: true
 runs:
@@ -10,7 +11,7 @@ runs:
   steps:
     - shell: pwsh
       id: get-version
-      run: ${{ github.action_path }}/SetVersion.ps1 -PackageFilePath ${{ inputs.packageFilePath }} -RunNumber ${{ github.run_number }}
+      run: ${{ github.action_path }}/SetVersion.ps1 -PackageFilePath ${{ inputs.package-file-path }} -RunNumber ${{ github.run_number }}
 outputs: 
   version:
     description: 'The version number'
