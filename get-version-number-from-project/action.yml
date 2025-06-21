@@ -4,10 +4,12 @@ description: 'Get the major and minor number from a given file'
 inputs:
   project:
     description: 'Path to the project containing the version number'
-    required: true
-  versionPropertyName:
+    required: false
+    default: 'Directory.Build.props'
+  version-property-name:
     description: 'Name of the MSBuild property containing the version number'
-    required: true
+    default: 'Version'
+    required: false
 runs:
   using: composite
   steps:

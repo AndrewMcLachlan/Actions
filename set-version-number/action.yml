@@ -4,10 +4,12 @@ description: 'Get the version number from a given file and set the build portion
 inputs:
   project:
     description: 'Path to the project containing the version number'
-    required: true
+    required: false
+    default: 'Directory.Build.props'
   version-property-name:
     description: 'Name of the MSBuild property containing the version number'
-    required: true
+    default: 'Version'
+    required: false
 runs:
   using: composite
   steps:
