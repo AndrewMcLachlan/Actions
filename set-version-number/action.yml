@@ -5,7 +5,7 @@ inputs:
   project:
     description: 'Path to the project containing the version number'
     required: true
-  versionPropertyName:
+  version-property-name:
     description: 'Name of the MSBuild property containing the version number'
     required: true
 runs:

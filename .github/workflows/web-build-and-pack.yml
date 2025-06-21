@@ -40,7 +40,7 @@ jobs:
       id: set-version-number
       uses: andrewmclachlan/actions/set-version-number@v3
       with:
-        filePath: 'Common.props'
+        project: 'Directory.Build.props'
         versionPropertyName: 'Version'
 
     - name: Restore dependencies
