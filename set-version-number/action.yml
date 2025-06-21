@@ -15,7 +15,7 @@ runs:
   steps:
     - shell: pwsh
       id: get-version
-      run: ${{ github.action_path }}/SetVersion.ps1 -Project ${{ inputs.project }} -VersionPropertyName ${{ inputs.versionPropertyName }} -RunNumber ${{ github.run_number }}
+      run: ${{ github.action_path }}/SetVersion.ps1 -Project ${{ inputs.project }} -VersionPropertyName ${{ inputs.version-property-name }} -RunNumber ${{ github.run_number }}
 outputs:
   version:
     description: 'The version number'

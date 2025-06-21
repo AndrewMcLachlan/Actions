@@ -15,7 +15,7 @@ runs:
   steps:
     - shell: pwsh
       id: get-version
-      run: ${{ github.action_path }}/GetVersion.ps1 -Project ${{ inputs.project }} -VersionPropertyName ${{ inputs.versionPropertyName }}
+      run: ${{ github.action_path }}/GetVersion.ps1 -Project ${{ inputs.project }} -VersionPropertyName ${{ inputs.version-property-name }}
 outputs:
   major:
     description: 'The major version number'
