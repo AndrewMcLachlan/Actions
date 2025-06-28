@@ -38,10 +38,10 @@ jobs:
 
     - name: Set version number
       id: set-version-number
-      uses: andrewmclachlan/actions/set-version-number@v3
+      uses: andrewmclachlan/actions/set-version-number@v4
       with:
         project: 'Directory.Build.props'
-        versionPropertyName: 'Version'
+        version-property-name: 'Version'
 
     - name: Restore dependencies
       run: dotnet restore ${{ inputs.solution }}
