@@ -17,5 +17,6 @@ if (!$parsed) {
 Write-Output "Version is $($version.ToString())"
 Write-Output "major=$($version.Major)" >> $Env:GITHUB_OUTPUT
 Write-Output "minor=$($version.Minor)" >> $Env:GITHUB_OUTPUT
+Write-Output "patch=$($version.Build)" >> $Env:GITHUB_OUTPUT
 Write-Output "Output file is $Env:GITHUB_OUTPUT"
 Get-Content $Env:GITHUB_OUTPUT | Write-Output
