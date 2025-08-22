@@ -23,3 +23,6 @@ outputs:
   minor:
     description: 'The minor version number'
     value: ${{ steps.get-version.outputs.minor }}
+  patch:
+    description: 'The patch version number'
+    value: ${{ steps.get-version.outputs.patch }}
