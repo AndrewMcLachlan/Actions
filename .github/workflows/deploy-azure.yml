@@ -14,6 +14,10 @@ on:
           description: 'Azure Web App name'
           type: string
           required: true
+        resource-group:
+          description: 'Azure Resource Group name'
+          type: string
+          required: true
         slot-name:
           description: 'Azure Web App deployment slot name'
           type: string
@@ -24,14 +28,16 @@ on:
           type: boolean
           required: false
           default: false
-       #appsettings:
-       #  description: 'Appsettings file name'
-       #  type: string
-       #  required: false
-       #substitutions:
-       #  description: 'JSON value substitutions in jq format'
-       #  type: string
-       #  required: false
+        container-image:
+          description: 'Container image name with tag (e.g., ghcr.io/owner/repo:tag). If provided, deploys as container instead of package'
+          type: string
+          required: false
+          default: ''
+        container-name:
+          description: 'Container name to update (for sidecar-enabled apps)'
+          type: string
+          required: false
+          default: 'main'
     secrets:
       AZURE_CLIENT_ID:
         description: 'Azure client ID'
@@ -59,18 +65,47 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: 'Download artifact'
+        if: inputs.container-image == ''
         uses: actions/download-artifact@v6
         with:
           name: ${{ inputs.artifact-name }}
           path: ${{ github.workspace }}
 
-      - name: 'Run Azure webapp deploy action using publish profile credentials'
+      - name: 'Deploy package to Azure Web App'
+        if: inputs.container-image == ''
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ inputs.app-name }}
           package: '${{ github.workspace }}'
           clean: ${{ inputs.clean }}
           slot-name: ${{ inputs.slot-name }}
+
+      - name: 'Deploy container to Azure Web App'
+        if: inputs.container-image != ''
+        run: |
+          if [ -n "${{ inputs.slot-name }}" ]; then
+            az webapp sitecontainers update \
+              --name ${{ inputs.app-name }} \
+              --resource-group ${{ inputs.resource-group }} \
+              --slot ${{ inputs.slot-name }} \
+              --container-name ${{ inputs.container-name }} \
+              --image ${{ inputs.container-image }}
+            
+            az webapp restart \
+              --name ${{ inputs.app-name }} \
+              --resource-group ${{ inputs.resource-group }} \
+              --slot ${{ inputs.slot-name }}
+          else
+            az webapp sitecontainers update \
+              --name ${{ inputs.app-name }} \
+              --resource-group ${{ inputs.resource-group }} \
+              --container-name ${{ inputs.container-name }} \
+              --image ${{ inputs.container-image }}
+            
+            az webapp restart \
+              --name ${{ inputs.app-name }} \
+              --resource-group ${{ inputs.resource-group }}
+          fi
 
       - name: logout
         run: |
