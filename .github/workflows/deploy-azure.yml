@@ -24,14 +24,11 @@ on:
           type: boolean
           required: false
           default: false
-       #appsettings:
-       #  description: 'Appsettings file name'
-       #  type: string
-       #  required: false
-       #substitutions:
-       #  description: 'JSON value substitutions in jq format'
-       #  type: string
-       #  required: false
+        container-image:
+          description: 'Container image name with tag (e.g., ghcr.io/owner/repo:tag). If provided, deploys as container instead of package'
+          type: string
+          required: false
+          default: ''
     secrets:
       AZURE_CLIENT_ID:
         description: 'Azure client ID'
@@ -59,18 +56,45 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: 'Download artifact'
+        if: inputs.container-image == ''
         uses: actions/download-artifact@v6
         with:
           name: ${{ inputs.artifact-name }}
           path: ${{ github.workspace }}
 
-      - name: 'Run Azure webapp deploy action using publish profile credentials'
+      - name: 'Deploy package to Azure Web App'
+        if: inputs.container-image == ''
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ inputs.app-name }}
           package: '${{ github.workspace }}'
           clean: ${{ inputs.clean }}
           slot-name: ${{ inputs.slot-name }}
+
+      - name: 'Deploy container to Azure Web App'
+        if: inputs.container-image != ''
+        run: |
+          if [ -n "${{ inputs.slot-name }}" ]; then
+            az webapp config container set \
+              --name ${{ inputs.app-name }} \
+              --resource-group $(az webapp show --name ${{ inputs.app-name }} --query resourceGroup -o tsv) \
+              --slot ${{ inputs.slot-name }} \
+              --docker-custom-image-name ${{ inputs.container-image }}
+            
+            az webapp restart \
+              --name ${{ inputs.app-name }} \
+              --resource-group $(az webapp show --name ${{ inputs.app-name }} --query resourceGroup -o tsv) \
+              --slot ${{ inputs.slot-name }}
+          else
+            az webapp config container set \
+              --name ${{ inputs.app-name }} \
+              --resource-group $(az webapp show --name ${{ inputs.app-name }} --query resourceGroup -o tsv) \
+              --docker-custom-image-name ${{ inputs.container-image }}
+            
+            az webapp restart \
+              --name ${{ inputs.app-name }} \
+              --resource-group $(az webapp show --name ${{ inputs.app-name }} --query resourceGroup -o tsv)
+          fi
 
       - name: logout
         run: |
