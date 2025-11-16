@@ -14,6 +14,10 @@ on:
           description: 'Azure Web App name'
           type: string
           required: true
+        resource-group:
+          description: 'Azure Resource Group name'
+          type: string
+          required: true
         slot-name:
           description: 'Azure Web App deployment slot name'
           type: string
@@ -29,6 +33,11 @@ on:
           type: string
           required: false
           default: ''
+        container-name:
+          description: 'Container name to update (for sidecar-enabled apps)'
+          type: string
+          required: false
+          default: 'main'
     secrets:
       AZURE_CLIENT_ID:
         description: 'Azure client ID'
@@ -75,25 +84,27 @@ jobs:
         if: inputs.container-image != ''
         run: |
           if [ -n "${{ inputs.slot-name }}" ]; then
-            az webapp config container set \
+            az webapp sitecontainers update \
               --name ${{ inputs.app-name }} \
-              --resource-group $(az webapp show --name ${{ inputs.app-name }} --query resourceGroup -o tsv) \
+              --resource-group ${{ inputs.resource-group }} \
               --slot ${{ inputs.slot-name }} \
-              --docker-custom-image-name ${{ inputs.container-image }}
+              --container-name ${{ inputs.container-name }} \
+              --image ${{ inputs.container-image }}
             
             az webapp restart \
               --name ${{ inputs.app-name }} \
-              --resource-group $(az webapp show --name ${{ inputs.app-name }} --query resourceGroup -o tsv) \
+              --resource-group ${{ inputs.resource-group }} \
               --slot ${{ inputs.slot-name }}
           else
-            az webapp config container set \
+            az webapp sitecontainers update \
               --name ${{ inputs.app-name }} \
-              --resource-group $(az webapp show --name ${{ inputs.app-name }} --query resourceGroup -o tsv) \
-              --docker-custom-image-name ${{ inputs.container-image }}
+              --resource-group ${{ inputs.resource-group }} \
+              --container-name ${{ inputs.container-name }} \
+              --image ${{ inputs.container-image }}
             
             az webapp restart \
               --name ${{ inputs.app-name }} \
-              --resource-group $(az webapp show --name ${{ inputs.app-name }} --query resourceGroup -o tsv)
+              --resource-group ${{ inputs.resource-group }}
           fi
 
       - name: logout
