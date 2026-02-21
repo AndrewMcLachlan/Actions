@@ -4,7 +4,9 @@ param (
     [Parameter(Mandatory = $true)]
     [string]$VersionPropertyName,
     [Parameter(Mandatory = $true)]
-    [string]$RunNumber
+    [string]$RunNumber,
+    [Parameter(Mandatory = $false)]
+    [string]$PatchVersionType = "run-number"
 )
 
 $res = dotnet msbuild -getProperty:Version $Project
@@ -16,7 +18,15 @@ if (!$parsed) {
     throw "Could not parse version '$($res)' in project '$Project'"
 }
 
-$newVersion = [System.Version]::new($version.Major, $version.Minor, $RunNumber)
+if ($PatchVersionType -eq "commits-this-month") {
+    $date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-01T00:00:00Z")
+    $patch = git rev-list --count --after="$date" HEAD
+    Write-Output "Commits this month: $patch"
+} else {
+    $patch = $RunNumber
+}
+
+$newVersion = [System.Version]::new($version.Major, $version.Minor, $patch)
 
 Write-Output "Version is $($newVersion.ToString())"
 Write-Output "version=$($newVersion.ToString())" >> $Env:GITHUB_OUTPUT
