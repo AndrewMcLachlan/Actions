@@ -10,12 +10,16 @@ inputs:
     description: 'Name of the MSBuild property containing the version number'
     default: 'Version'
     required: false
+  patch-version-type:
+    description: 'How to calculate the patch version. Options: run-number, commits-this-month'
+    default: 'run-number'
+    required: false
 runs:
   using: composite
   steps:
     - shell: pwsh
       id: get-version
-      run: ${{ github.action_path }}/SetVersion.ps1 -Project ${{ inputs.project }} -VersionPropertyName ${{ inputs.version-property-name }} -RunNumber ${{ github.run_number }}
+      run: ${{ github.action_path }}/SetVersion.ps1 -Project ${{ inputs.project }} -VersionPropertyName ${{ inputs.version-property-name }} -RunNumber ${{ github.run_number }} -PatchVersionType ${{ inputs.patch-version-type }}
 outputs:
   version:
     description: 'The version number'

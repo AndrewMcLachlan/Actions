@@ -2,7 +2,9 @@ param (
     [Parameter(Mandatory = $true)]
     [string]$PackageFilePath,
     [Parameter(Mandatory = $true)]
-    [string]$RunNumber
+    [string]$RunNumber,
+    [Parameter(Mandatory = $false)]
+    [string]$PatchVersionType = "run-number"
 )
 
 $file = Get-Content -Path $PackageFilePath | ConvertFrom-Json
@@ -25,7 +27,15 @@ if (!$parsed) {
     throw "Could not parse version '$res' in file '$PackageFilePath'"
 }
 
-$newVersion = [System.Version]::new($version.Major, $version.Minor, $RunNumber)
+if ($PatchVersionType -eq "commits-this-month") {
+    $date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-01T00:00:00Z")
+    $patch = git rev-list --count --after="$date" HEAD
+    Write-Output "Commits this month: $patch"
+} else {
+    $patch = $RunNumber
+}
+
+$newVersion = [System.Version]::new($version.Major, $version.Minor, $patch)
 $newVersionComplete = "$($newVersion.ToString())$suffix";
 
 Write-Output "Version is $newVersionComplete"
