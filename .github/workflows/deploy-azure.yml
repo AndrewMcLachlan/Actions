@@ -66,7 +66,7 @@ jobs:
 
       - name: 'Download artifact'
         if: inputs.container-image == ''
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.artifact-name }}
           path: ${{ github.workspace }}
