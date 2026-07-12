@@ -1,0 +1,37 @@
+name: 'Get .NET version'
+author: 'Andrew McLachlan'
+description: >-
+  Derive the package version from MSBuild props: Major.Minor comes from VersionPrefix,
+  the patch is the number of commits since that version line last changed (so unrelated
+  edits to the props file do not reset it). Set VersionSuffix for a prerelease line.
+  Requires a full-history checkout (fetch-depth: 0) and the .NET SDK on the runner.
+  Outputs Version, AssemblyVersion (Major.0.0.0) and FileVersion.
+inputs:
+  project:
+    description: 'MSBuild file that declares VersionPrefix (and optionally VersionSuffix)'
+    default: 'Directory.Build.props'
+    required: false
+runs:
+  using: composite
+  steps:
+    - id: major-minor
+      uses: AndrewMcLachlan/Actions/get-version-number-from-project@v4
+      with:
+        project: ${{ inputs.project }}
+        version-property-name: VersionPrefix
+    - id: assemble
+      shell: pwsh
+      run: ${{ github.action_path }}/GetVersion.ps1 -Project '${{ inputs.project }}' -Major '${{ steps.major-minor.outputs.major }}' -Minor '${{ steps.major-minor.outputs.minor }}'
+outputs:
+  version:
+    description: 'Full package version, e.g. 4.0.17 (stable) or 5.0.0-beta.4 (prerelease)'
+    value: ${{ steps.assemble.outputs.version }}
+  assembly-version:
+    description: 'Assembly version, pinned to Major.0.0.0'
+    value: ${{ steps.assemble.outputs.assembly-version }}
+  file-version:
+    description: 'File version, Major.Minor.patch.0'
+    value: ${{ steps.assemble.outputs.file-version }}
+  patch:
+    description: 'The computed patch (commit count since the version line changed)'
+    value: ${{ steps.assemble.outputs.patch }}

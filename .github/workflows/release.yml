@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Full version tag to release, e.g. v4.5 or v4.5.2'
+        type: string
+        required: true
+      prerelease:
+        description: 'Mark the GitHub Release as a prerelease'
+        type: boolean
+        required: false
+        default: false
+      draft:
+        description: 'Create the GitHub Release as a draft'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validate tag and derive major tag
+        id: vars
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+(\.[0-9]+){1,2}$ ]]; then
+            echo "::error::Invalid tag '$TAG'. Expected format vMAJOR.MINOR or vMAJOR.MINOR.PATCH (e.g. v4.5 or v4.5.2)."
+            exit 1
+          fi
+          MAJOR_TAG="v$(echo "${TAG#v}" | cut -d. -f1)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "major_tag=$MAJOR_TAG" >> "$GITHUB_OUTPUT"
+          echo "Releasing $TAG, moving major tag $MAJOR_TAG"
+
+      - name: Configure git user
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create version tag
+        shell: bash
+        env:
+          TAG: ${{ steps.vars.outputs.tag }}
+          SHA: ${{ github.sha }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag '$TAG' already exists. Version tags are immutable and will not be overwritten."
+            exit 1
+          fi
+          git tag -a "$TAG" -m "Release $TAG" "$SHA"
+          git push origin "refs/tags/$TAG"
+          echo "Created and pushed version tag $TAG at $SHA"
+
+      - name: Move major tag
+        shell: bash
+        env:
+          MAJOR_TAG: ${{ steps.vars.outputs.major_tag }}
+          TAG: ${{ steps.vars.outputs.tag }}
+          SHA: ${{ github.sha }}
+        run: |
+          # The major tag is a moving pointer to the latest release in its line.
+          git tag -d "$MAJOR_TAG" 2>/dev/null || true
+          git push origin ":refs/tags/$MAJOR_TAG" 2>/dev/null || true
+          git tag -a "$MAJOR_TAG" -m "Update $MAJOR_TAG to $TAG" "$SHA"
+          git push --force origin "refs/tags/$MAJOR_TAG"
+          echo "Moved major tag $MAJOR_TAG to $SHA"
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.vars.outputs.tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          DRAFT: ${{ inputs.draft }}
+        run: |
+          ARGS=("$TAG" --title "$TAG" --generate-notes --target "${{ github.sha }}")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            ARGS+=(--prerelease)
+          fi
+          if [[ "$DRAFT" == "true" ]]; then
+            ARGS+=(--draft)
+          fi
+          gh release create "${ARGS[@]}"
+
+      - name: Summary
+        shell: bash
+        env:
+          TAG: ${{ steps.vars.outputs.tag }}
+          MAJOR_TAG: ${{ steps.vars.outputs.major_tag }}
+          SHA: ${{ github.sha }}
+        run: |
+          echo "::notice::Released $TAG, moved $MAJOR_TAG to $SHA"
