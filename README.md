@@ -170,7 +170,18 @@ Outputs (17 commits since the `VersionPrefix` line changed):
 steps.version.outputs.version          - 4.0.17   (5.0.0-beta.17 with VersionSuffix=beta)
 steps.version.outputs.assembly-version - 4.0.0.0
 steps.version.outputs.file-version     - 4.0.17.0
+steps.version.outputs.major            - 4
+steps.version.outputs.minor            - 0
 steps.version.outputs.patch            - 17
+steps.version.outputs.version-suffix   -          (e.g. "beta" for a prerelease line)
+steps.version.outputs.is-prerelease    - false    (true when a VersionSuffix is set)
+```
+
+The breakdown lets a workflow branch on the parts — e.g. gate publishing to stable trunk builds and
+prereleases only:
+
+```yaml
+    if: github.ref == 'refs/heads/main' || steps.version.outputs.is-prerelease == 'true'
 ```
 
 ## Releasing

@@ -31,11 +31,15 @@ else {
 $assemblyVersion = "$Major.0.0.0"
 $fileVersion = "$Major.$Minor.$count.0"
 
+$isPrerelease = if ($suffix) { 'true' } else { 'false' }
+
 Write-Output "Version is $version (assembly $assemblyVersion, file $fileVersion)"
 
 "version=$version" >> $Env:GITHUB_OUTPUT
 "assembly-version=$assemblyVersion" >> $Env:GITHUB_OUTPUT
 "file-version=$fileVersion" >> $Env:GITHUB_OUTPUT
 "patch=$count" >> $Env:GITHUB_OUTPUT
+"version-suffix=$suffix" >> $Env:GITHUB_OUTPUT
+"is-prerelease=$isPrerelease" >> $Env:GITHUB_OUTPUT
 
 Write-Output "::notice::Version $version (assembly $assemblyVersion)"
