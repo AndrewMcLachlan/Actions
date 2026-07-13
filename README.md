@@ -123,3 +123,71 @@ The output would be:
 ```
 steps.set-version-number.outputs.version - 2.1.50
 ```
+
+## Get .NET Version
+
+Derives a package version from MSBuild props where **the version is stated, not inferred**:
+`Major.Minor` comes from `VersionPrefix`, and the patch is the number of commits **since that
+version line last changed** (so unrelated edits to the props file don't reset it). Set
+`VersionSuffix` for a prerelease line. Internally uses `get-version-number-from-project` for
+Major/Minor. Requires a full-history checkout (`fetch-depth: 0`) and the .NET SDK on the runner.
+
+### Example
+
+Given `Directory.Build.props`:
+
+```xml
+<PropertyGroup>
+  <VersionPrefix>4.0</VersionPrefix>
+  <!-- optional, for a prerelease line: -->
+  <!-- <VersionSuffix>beta</VersionSuffix> -->
+</PropertyGroup>
+```
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0          # required: full history for the commit count
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Get version
+      id: version
+      uses: andrewmclachlan/actions/get-dotnet-version@v4
+      with:
+        project: 'Directory.Build.props'   # optional, this is the default
+    - name: Build
+      run: dotnet build --p:Version=${{ steps.version.outputs.version }} --p:AssemblyVersion=${{ steps.version.outputs.assembly-version }} --p:FileVersion=${{ steps.version.outputs.file-version }}
+```
+
+Outputs (17 commits since the `VersionPrefix` line changed):
+
+```
+steps.version.outputs.version          - 4.0.17   (5.0.0-beta.17 with VersionSuffix=beta)
+steps.version.outputs.assembly-version - 4.0.0.0
+steps.version.outputs.file-version     - 4.0.17.0
+steps.version.outputs.patch            - 17
+```
+
+## Releasing
+
+This repo publishes reusable actions that consumers reference by tag (e.g. `andrewmclachlan/actions/set-version-number@v4`). Releases follow the **moving major tag** convention: alongside an immutable full version tag (`v4.5`, `v4.5.2`), a `v<MAJOR>` tag (`v4`) is kept pointing at the latest release in that major line. Consumers pin `@v4` and automatically pick up the newest `v4.x`.
+
+To cut a release:
+
+1. Go to **Actions → Release → Run workflow**.
+2. Select the branch/ref you want to release from (the workflow tags whatever commit you dispatch against).
+3. Enter the full version `tag`, e.g. `v4.5` or `v4.5.2` (must match `vMAJOR.MINOR` or `vMAJOR.MINOR.PATCH`).
+4. Optionally tick `prerelease` and/or `draft`.
+5. Run it.
+
+The workflow will:
+
+- Validate the tag format and derive the major tag (`v4.5` → `v4`).
+- Create the annotated full version tag at the dispatched commit and push it. It **fails** if that exact version tag already exists (version tags are immutable).
+- Delete and recreate the major tag `v<MAJOR>` at the same commit, force-pushing it so `@v4` moves forward.
+- Create a GitHub Release for the version tag with auto-generated notes, honouring the `prerelease`/`draft` inputs.
