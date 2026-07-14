@@ -1,0 +1,38 @@
+name: 'Get Node version'
+author: 'Andrew McLachlan'
+description: >-
+  Derive an npm package version from package.json where the version is stated, not inferred:
+  Major.Minor (and an optional prerelease suffix) come from the "version" field, and the patch
+  is the number of commits since that version line last changed (so unrelated edits to
+  package.json do not reset it). Set a prerelease suffix by stating e.g. 5.0.0-beta.
+  Requires a full-history checkout (fetch-depth: 0).
+inputs:
+  package-file:
+    description: 'package.json file that declares the stated Major.Minor[-suffix] version'
+    default: 'package.json'
+    required: false
+runs:
+  using: composite
+  steps:
+    - id: get-version
+      shell: pwsh
+      run: ${{ github.action_path }}/GetVersion.ps1 -PackageFile '${{ inputs.package-file }}'
+outputs:
+  version:
+    description: 'Full package version, e.g. 4.0.17 (stable) or 5.0.0-beta.4 (prerelease)'
+    value: ${{ steps.get-version.outputs.version }}
+  major:
+    description: 'The major version number'
+    value: ${{ steps.get-version.outputs.major }}
+  minor:
+    description: 'The minor version number'
+    value: ${{ steps.get-version.outputs.minor }}
+  patch:
+    description: 'The computed patch (commit count since the version line changed)'
+    value: ${{ steps.get-version.outputs.patch }}
+  suffix:
+    description: 'The prerelease suffix (e.g. beta), or empty for a stable line'
+    value: ${{ steps.get-version.outputs.suffix }}
+  is-prerelease:
+    description: 'true when a prerelease suffix is present, otherwise false'
+    value: ${{ steps.get-version.outputs.is-prerelease }}

@@ -184,6 +184,85 @@ prereleases only:
     if: github.ref == 'refs/heads/main' || steps.version.outputs.is-prerelease == 'true'
 ```
 
+## Get Node Version
+
+The Node counterpart of [Get .NET Version](#get-net-version). Derives an npm package version from
+`package.json` where **the version is stated, not inferred**: `Major.Minor` (and an optional
+prerelease suffix) come from the `version` field, and the patch is the number of commits **since
+that version line last changed** (so unrelated edits to `package.json` don't reset it). State a
+prerelease line by stating e.g. `5.0.0-beta`. `package.json`'s `version` plays the role that
+`VersionPrefix`/`VersionSuffix` play in `Directory.Build.props` — only `Major.Minor` and the
+optional `-suffix` are authoritative; the stated patch is ignored and recomputed. Requires a
+full-history checkout (`fetch-depth: 0`).
+
+### Example
+
+Given `package.json`:
+
+```json
+{
+  "name": "example",
+  "version": "4.0.0"
+}
+```
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0          # required: full history for the commit count
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        registry-url: "https://npm.pkg.github.com"
+    - name: Get version
+      id: version
+      uses: andrewmclachlan/actions/get-node-version@v4
+      with:
+        package-file: 'package.json'   # optional, this is the default
+    - run: npm ci
+    - run: npm pkg set version=${{ steps.version.outputs.version }}
+    - run: npm run build
+    # Publish only from main (the stable trunk) or a prerelease line (a branch whose stated
+    # version carries a suffix). A suffix-less non-main branch publishes nothing.
+    - if: github.ref == 'refs/heads/main' || steps.version.outputs.is-prerelease == 'true'
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: npm publish
+```
+
+Outputs (17 commits since the `version` line changed):
+
+```
+steps.version.outputs.version        - 4.0.17   (5.0.0-beta.17 when version is 5.0.0-beta)
+steps.version.outputs.major          - 4
+steps.version.outputs.minor          - 0
+steps.version.outputs.patch          - 17
+steps.version.outputs.suffix         -          (beta when version is 5.0.0-beta)
+steps.version.outputs.is-prerelease  - false    (true when a suffix is present)
+```
+
+For a monorepo, apply the version to every published workspace, e.g.
+`npm pkg set version=${{ steps.version.outputs.version }} --workspace=pkg-a --workspace=pkg-b`.
+
+### Branching
+
+Same model as .NET, with the version living in `package.json` *on the branch* — every branch is
+self-describing and isolated, no shared tags:
+
+- **`main` is the trunk** — every merge publishes `X.Y.<count>` (stable).
+- **`feature/*` / PRs** build and test but never publish.
+- **A preview line is a `release/**` branch whose stated version carries a suffix** — e.g. on
+  `release/5.0-beta` set `"version": "5.0.0-beta"` → publishes `5.0.0-beta.N` while `main` stays on
+  `4.x`. Graduate **in place**: remove the suffix (`"version": "5.0.0"`, which publishes nothing off
+  `main`), merge to `main`, and `main` publishes `5.0.0`.
+
 ## Releasing
 
 This repo publishes reusable actions that consumers reference by tag (e.g. `andrewmclachlan/actions/set-version-number@v4`). Releases follow the **moving major tag** convention: alongside an immutable full version tag (`v4.5`, `v4.5.2`), a `v<MAJOR>` tag (`v4`) is kept pointing at the latest release in that major line. Consumers pin `@v4` and automatically pick up the newest `v4.x`.
