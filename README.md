@@ -278,6 +278,16 @@ To cut a release:
 The workflow will:
 
 - Validate the tag format and derive the major tag (`v4.5` → `v4`).
-- Create the annotated full version tag at the dispatched commit and push it. It **fails** if that exact version tag already exists (version tags are immutable).
-- Delete and recreate the major tag `v<MAJOR>` at the same commit, force-pushing it so `@v4` moves forward.
 - Create a GitHub Release for the version tag with auto-generated notes, honouring the `prerelease`/`draft` inputs.
+- **Tag according to what kind of release it is:**
+  - **Stable** (not draft, not prerelease): create the annotated version tag at the dispatched commit, and move the major tag `v<MAJOR>` to it (force-push, so `@v4` advances). Fails if the version tag already exists (version tags are immutable).
+  - **Prerelease** (published): create the version tag, but **do not move the major tag** — consumers on `@v4` won't pick up a prerelease.
+  - **Draft**: create only the draft release — **no tags are created or moved**. The version tag and major-tag move happen when you publish it (below), so abandoning a draft leaves nothing behind.
+
+### Publishing a draft
+
+Use **Actions → Publish Release → Run workflow** to publish a draft cut above. With no input it publishes the **most recent draft**; optionally pass a specific draft `tag`. It will:
+
+- Create the annotated version tag at the draft's target commit and push it.
+- Publish the release (clears the draft flag).
+- Move the major tag `v<MAJOR>` to that commit — **unless the draft is a prerelease**, in which case the major tag stays put.

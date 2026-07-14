@@ -51,7 +51,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      # Drafts don't get an immutable version tag yet — it's created when the
+      # draft is published (see the Publish Release workflow), so abandoning a
+      # draft doesn't orphan a tag that would block re-cutting the version.
       - name: Create version tag
+        if: ${{ !inputs.draft }}
         shell: bash
         env:
           TAG: ${{ steps.vars.outputs.tag }}
@@ -65,7 +69,11 @@ jobs:
           git push origin "refs/tags/$TAG"
           echo "Created and pushed version tag $TAG at $SHA"
 
+      # The moving major tag only advances for a published, stable release —
+      # never for a draft or prerelease, so consumers pinning @vMAJOR don't pick
+      # up an unpublished or pre-release commit.
       - name: Move major tag
+        if: ${{ !inputs.draft && !inputs.prerelease }}
         shell: bash
         env:
           MAJOR_TAG: ${{ steps.vars.outputs.major_tag }}
@@ -102,5 +110,13 @@ jobs:
           TAG: ${{ steps.vars.outputs.tag }}
           MAJOR_TAG: ${{ steps.vars.outputs.major_tag }}
           SHA: ${{ github.sha }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          DRAFT: ${{ inputs.draft }}
         run: |
-          echo "::notice::Released $TAG, moved $MAJOR_TAG to $SHA"
+          if [[ "$DRAFT" == "true" ]]; then
+            echo "::notice::Created draft release $TAG (no tags created or moved). Run the Publish Release workflow to publish it and move $MAJOR_TAG."
+          elif [[ "$PRERELEASE" == "true" ]]; then
+            echo "::notice::Released prerelease $TAG at $SHA (version tag created; $MAJOR_TAG not moved)."
+          else
+            echo "::notice::Released $TAG and moved $MAJOR_TAG to $SHA."
+          fi
