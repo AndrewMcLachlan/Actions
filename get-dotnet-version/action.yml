@@ -5,7 +5,8 @@ description: >-
   the patch is the number of commits since that version line last changed (so unrelated
   edits to the props file do not reset it). Set VersionSuffix for a prerelease line.
   Requires a full-history checkout (fetch-depth: 0) and the .NET SDK on the runner.
-  Outputs Version, AssemblyVersion (Major.0.0.0) and FileVersion.
+  Outputs the full Version, AssemblyVersion (Major.0.0.0) and FileVersion, plus a breakdown
+  (major, minor, patch, version-suffix, is-prerelease) so callers can branch on the parts.
 inputs:
   project:
     description: 'MSBuild file that declares VersionPrefix (and optionally VersionSuffix)'
@@ -32,6 +33,18 @@ outputs:
   file-version:
     description: 'File version, Major.Minor.patch.0'
     value: ${{ steps.assemble.outputs.file-version }}
+  major:
+    description: 'The major version, from VersionPrefix'
+    value: ${{ steps.major-minor.outputs.major }}
+  minor:
+    description: 'The minor version, from VersionPrefix'
+    value: ${{ steps.major-minor.outputs.minor }}
   patch:
     description: 'The computed patch (commit count since the version line changed)'
     value: ${{ steps.assemble.outputs.patch }}
+  version-suffix:
+    description: 'The prerelease suffix from VersionSuffix (e.g. beta), or empty for a stable version'
+    value: ${{ steps.assemble.outputs.version-suffix }}
+  is-prerelease:
+    description: 'true when a VersionSuffix is present (prerelease), otherwise false'
+    value: ${{ steps.assemble.outputs.is-prerelease }}
