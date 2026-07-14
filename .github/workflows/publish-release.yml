@@ -1,8 +1,9 @@
 name: Publish Release
 
-# Publishes a draft release created by the Release workflow: creates its
-# immutable version tag, marks the release as published, and advances the
-# moving major tag (vMAJOR) to that commit — unless the release is a prerelease.
+# Publishes a draft release created by the Release workflow and advances the
+# moving major tag (vMAJOR) to that release's commit — unless it's a prerelease.
+# The immutable version tag (e.g. v4.5) already exists (created when the draft
+# was cut); this workflow just publishes and moves the major tag "at that point".
 
 on:
   workflow_dispatch:
@@ -44,7 +45,7 @@ jobs:
             exit 1
           fi
 
-          INFO=$(gh release view "$TAG" --json isDraft,isPrerelease,targetCommitish)
+          INFO=$(gh release view "$TAG" --json isDraft,isPrerelease)
           if [[ "$(jq -r '.isDraft' <<<"$INFO")" != "true" ]]; then
             echo "::error::Release '$TAG' is not a draft."
             exit 1
@@ -55,10 +56,8 @@ jobs:
             exit 1
           fi
 
-          MAJOR_TAG="v$(echo "${TAG#v}" | cut -d. -f1)"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "major_tag=$MAJOR_TAG" >> "$GITHUB_OUTPUT"
-          echo "sha=$(jq -r '.targetCommitish' <<<"$INFO")" >> "$GITHUB_OUTPUT"
+          echo "major_tag=v$(echo "${TAG#v}" | cut -d. -f1)" >> "$GITHUB_OUTPUT"
           echo "is_prerelease=$(jq -r '.isPrerelease' <<<"$INFO")" >> "$GITHUB_OUTPUT"
           echo "Publishing draft $TAG (prerelease=$(jq -r '.isPrerelease' <<<"$INFO"))"
 
@@ -67,21 +66,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Create version tag
-        shell: bash
-        env:
-          TAG: ${{ steps.draft.outputs.tag }}
-          SHA: ${{ steps.draft.outputs.sha }}
-        run: |
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "::error::Tag '$TAG' already exists. Version tags are immutable and will not be overwritten."
-            exit 1
-          fi
-          git fetch --no-tags origin "$SHA" 2>/dev/null || true
-          git tag -a "$TAG" -m "Release $TAG" "$SHA"
-          git push origin "refs/tags/$TAG"
-          echo "Created and pushed version tag $TAG at $SHA"
 
       - name: Publish the draft release
         shell: bash
@@ -92,31 +76,37 @@ jobs:
           gh release edit "$TAG" --draft=false
           echo "Published release $TAG"
 
-      # Advance the moving major tag only for a stable (non-prerelease) release.
+      # Advance the moving major tag to the same commit as the version tag, but
+      # only for a stable (non-prerelease) release.
       - name: Move major tag
         if: steps.draft.outputs.is_prerelease != 'true'
         shell: bash
         env:
           MAJOR_TAG: ${{ steps.draft.outputs.major_tag }}
           TAG: ${{ steps.draft.outputs.tag }}
-          SHA: ${{ steps.draft.outputs.sha }}
         run: |
+          # Resolve the commit the (now-published) version tag points to.
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+          SHA=$(git rev-list -n1 "refs/tags/$TAG")
+          if [[ -z "$SHA" ]]; then
+            echo "::error::Could not resolve a commit for tag $TAG."
+            exit 1
+          fi
           git tag -d "$MAJOR_TAG" 2>/dev/null || true
           git push origin ":refs/tags/$MAJOR_TAG" 2>/dev/null || true
           git tag -a "$MAJOR_TAG" -m "Update $MAJOR_TAG to $TAG" "$SHA"
           git push --force origin "refs/tags/$MAJOR_TAG"
-          echo "Moved major tag $MAJOR_TAG to $SHA"
+          echo "Moved major tag $MAJOR_TAG to $SHA (= $TAG)"
 
       - name: Summary
         shell: bash
         env:
           TAG: ${{ steps.draft.outputs.tag }}
           MAJOR_TAG: ${{ steps.draft.outputs.major_tag }}
-          SHA: ${{ steps.draft.outputs.sha }}
           IS_PRERELEASE: ${{ steps.draft.outputs.is_prerelease }}
         run: |
           if [[ "$IS_PRERELEASE" == "true" ]]; then
-            echo "::notice::Published prerelease $TAG at $SHA ($MAJOR_TAG not moved)."
+            echo "::notice::Published prerelease $TAG ($MAJOR_TAG not moved)."
           else
-            echo "::notice::Published $TAG and moved $MAJOR_TAG to $SHA."
+            echo "::notice::Published $TAG and moved $MAJOR_TAG to it."
           fi
