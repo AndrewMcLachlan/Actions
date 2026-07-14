@@ -54,7 +54,7 @@ Write-Output "Version is $version"
 "major=$major"                 >> $Env:GITHUB_OUTPUT
 "minor=$minor"                 >> $Env:GITHUB_OUTPUT
 "patch=$patch"                 >> $Env:GITHUB_OUTPUT
-"suffix=$suffix"               >> $Env:GITHUB_OUTPUT
+"version-suffix=$suffix"       >> $Env:GITHUB_OUTPUT
 "is-prerelease=$isPrerelease"  >> $Env:GITHUB_OUTPUT
 
 Write-Output "::notice::Version $version"

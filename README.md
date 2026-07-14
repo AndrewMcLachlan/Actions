@@ -244,7 +244,7 @@ steps.version.outputs.version        - 4.0.17   (5.0.0-beta.17 when version is 5
 steps.version.outputs.major          - 4
 steps.version.outputs.minor          - 0
 steps.version.outputs.patch          - 17
-steps.version.outputs.suffix         -          (beta when version is 5.0.0-beta)
+steps.version.outputs.version-suffix -          (beta when version is 5.0.0-beta)
 steps.version.outputs.is-prerelease  - false    (true when a suffix is present)
 ```
 

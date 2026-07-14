@@ -30,9 +30,9 @@ outputs:
   patch:
     description: 'The computed patch (commit count since the version line changed)'
     value: ${{ steps.get-version.outputs.patch }}
-  suffix:
+  version-suffix:
     description: 'The prerelease suffix (e.g. beta), or empty for a stable line'
-    value: ${{ steps.get-version.outputs.suffix }}
+    value: ${{ steps.get-version.outputs.version-suffix }}
   is-prerelease:
     description: 'true when a prerelease suffix is present, otherwise false'
     value: ${{ steps.get-version.outputs.is-prerelease }}
