@@ -51,11 +51,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # Drafts don't get an immutable version tag yet — it's created when the
-      # draft is published (see the Publish Release workflow), so abandoning a
-      # draft doesn't orphan a tag that would block re-cutting the version.
+      # The immutable version tag (e.g. v4.5) is always created — consumers must
+      # explicitly opt into it, so it never changes an existing @vMAJOR workflow.
       - name: Create version tag
-        if: ${{ !inputs.draft }}
         shell: bash
         env:
           TAG: ${{ steps.vars.outputs.tag }}
@@ -114,7 +112,7 @@ jobs:
           DRAFT: ${{ inputs.draft }}
         run: |
           if [[ "$DRAFT" == "true" ]]; then
-            echo "::notice::Created draft release $TAG (no tags created or moved). Run the Publish Release workflow to publish it and move $MAJOR_TAG."
+            echo "::notice::Created draft release $TAG with version tag $TAG ($MAJOR_TAG not moved). Run the Publish Release workflow to publish it and move $MAJOR_TAG."
           elif [[ "$PRERELEASE" == "true" ]]; then
             echo "::notice::Released prerelease $TAG at $SHA (version tag created; $MAJOR_TAG not moved)."
           else
