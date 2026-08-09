@@ -322,10 +322,13 @@ itself, and the next run does it instead. Nothing accumulates, and no run can be
 ### The publish profile
 
 `publish-profile` is optional and supplies **deployment options only** — `BlockOnPossibleDataLoss`,
-the `Exclude*` settings, and so on. Its connection details are stripped before use, because a
-profile is written for a person at a keyboard and typically says
-`Authentication="Active Directory Interactive"`, which cannot be combined with an access token.
-The server and database always come from the inputs.
+the `Exclude*` settings, and so on. The server and database always come from the inputs.
+
+`TargetConnectionString`, `TargetServerName` and `TargetDatabaseName` are removed from a copy of
+the profile before it is used, rather than being left for the command line to override. A
+connection string that specifies `Authentication` cannot be combined with an access token — the
+client rejects the pair — and depending on whether a profile or an argument wins is a poor bet
+when losing it means deploying somewhere other than the database you named.
 
 Two options are worth checking in any profile used here: `ExcludeUsers` and `ExcludeLogins` should
 be `True`, or a deployment can drop the very contained user it is authenticating as.

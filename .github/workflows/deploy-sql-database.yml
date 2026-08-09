@@ -62,7 +62,7 @@ jobs:
       # One rule per calling repository, so a run can clear its own leftovers without touching
       # anybody else's. See the firewall step for why that matters.
       FIREWALL_RULE_NAME: gh-deploy-${{ github.event.repository.name }}
-      DACPAC_DIR: ${{ github.workspace }}/.dacpac
+      DACPAC_DIR: ${{ runner.temp }}/dacpac-download
     steps:
 
       - name: Checkout (for the publish profile)
@@ -89,8 +89,8 @@ jobs:
             path="${{ env.DACPAC_DIR }}/${{ inputs.dacpac-path }}"
             [ -f "$path" ] || { echo "::error::No dacpac at $path"; exit 1; }
           else
-            # -type f matters: the directory the artifact is downloaded into ends in .dacpac
-            # itself, and a * in -name matches an empty string, so it counted as a candidate.
+            # -type f: a * in -name matches an empty string, so a directory called .dacpac
+            # would otherwise answer as well as the file inside it.
             mapfile -t found < <(find "${{ env.DACPAC_DIR }}" -type f -name '*.dacpac')
             case ${#found[@]} in
               0) echo "::error::The artifact contains no dacpac"; exit 1 ;;
@@ -140,13 +140,13 @@ jobs:
           set -euo pipefail
           [ -f "${{ inputs.publish-profile }}" ] || { echo "::error::No publish profile at ${{ inputs.publish-profile }}"; exit 1; }
 
-          # The profile is written for a person at a keyboard, so its connection details say things
-          # like Authentication="Active Directory Interactive". Those are stripped rather than
-          # overridden: SqlClient refuses an access token alongside an Authentication keyword, and
-          # relying on which of a profile and a command-line argument wins is not worth the risk
-          # when the failure mode is deploying to the wrong database. What is left is exactly the
-          # deployment options -- BlockOnPossibleDataLoss, the Exclude* settings, and so on -- which
-          # stay owned by the repository that knows what they should be.
+          # Connection details are removed rather than left to be overridden by the arguments
+          # below, for two reasons. A connection string carrying an Authentication keyword cannot
+          # be combined with an access token -- SqlClient rejects the pair -- and the precedence
+          # between a profile and a command-line argument is not something worth depending on when
+          # being wrong means deploying to a different database than the one asked for.
+          #
+          # What remains is the deployment options, which stay the calling repository's to decide.
           python3 - "${{ inputs.publish-profile }}" "$RUNNER_TEMP/ci.publish.xml" <<'PY'
           import sys, xml.etree.ElementTree as ET
           ns = "http://schemas.microsoft.com/developer/msbuild/2003"
@@ -166,8 +166,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Entra token rather than a password: the workflow signs in with OIDC, and the app
-          # registration is a contained user in the database.
+          # Authenticates with the identity azure/login established, which the target database
+          # must recognise -- see the README for the grant that requires.
           token=$(az account get-access-token --resource https://database.windows.net/ --query accessToken -o tsv)
 
           args=(
