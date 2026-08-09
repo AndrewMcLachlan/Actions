@@ -89,7 +89,9 @@ jobs:
             path="${{ env.DACPAC_DIR }}/${{ inputs.dacpac-path }}"
             [ -f "$path" ] || { echo "::error::No dacpac at $path"; exit 1; }
           else
-            mapfile -t found < <(find "${{ env.DACPAC_DIR }}" -name '*.dacpac')
+            # -type f matters: the directory the artifact is downloaded into ends in .dacpac
+            # itself, and a * in -name matches an empty string, so it counted as a candidate.
+            mapfile -t found < <(find "${{ env.DACPAC_DIR }}" -type f -name '*.dacpac')
             case ${#found[@]} in
               0) echo "::error::The artifact contains no dacpac"; exit 1 ;;
               1) path="${found[0]}" ;;
