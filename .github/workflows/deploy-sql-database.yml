@@ -62,7 +62,6 @@ jobs:
       # One rule per calling repository, so a run can clear its own leftovers without touching
       # anybody else's. See the firewall step for why that matters.
       FIREWALL_RULE_NAME: gh-deploy-${{ github.event.repository.name }}
-      DACPAC_DIR: ${{ github.workspace }}/dacpac-download
     steps:
 
       - name: Checkout (for the publish profile)
@@ -79,19 +78,19 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.artifact-name }}
-          path: ${{ env.DACPAC_DIR }}
+          path: dacpac-download
 
       - name: Locate the dacpac
         id: dacpac
         run: |
           set -euo pipefail
           if [ -n "${{ inputs.dacpac-path }}" ]; then
-            path="${{ env.DACPAC_DIR }}/${{ inputs.dacpac-path }}"
+            path="dacpac-download/${{ inputs.dacpac-path }}"
             [ -f "$path" ] || { echo "::error::No dacpac at $path"; exit 1; }
           else
             # -type f: a * in -name matches an empty string, so a directory called .dacpac
             # would otherwise answer as well as the file inside it.
-            mapfile -t found < <(find "${{ env.DACPAC_DIR }}" -type f -name '*.dacpac')
+            mapfile -t found < <(find dacpac-download -type f -name '*.dacpac')
             case ${#found[@]} in
               0) echo "::error::The artifact contains no dacpac"; exit 1 ;;
               1) path="${found[0]}" ;;
@@ -185,7 +184,7 @@ jobs:
           # matters most where the profile allows data loss -- there is otherwise nothing to read
           # afterwards but the schema itself.
           /tmp/sqlpackage/sqlpackage /Action:Script "${args[@]}" \
-            /OutputPath:"${{ github.workspace }}/deployment-script.sql"
+            /OutputPath:deployment-script.sql
 
           if [ "${{ inputs.script-only }}" = "true" ]; then
             echo "::notice::script-only: generated the deployment script without running it"
@@ -201,7 +200,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: deployment-script-${{ inputs.environment }}-${{ inputs.database-name }}
-          path: ${{ github.workspace }}/deployment-script.sql
+          path: deployment-script.sql
           if-no-files-found: warn
 
       - name: Close the firewall
