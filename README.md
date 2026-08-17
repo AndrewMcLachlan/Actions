@@ -263,6 +263,85 @@ self-describing and isolated, no shared tags:
   `4.x`. Graduate **in place**: remove the suffix (`"version": "5.0.0"`, which publishes nothing off
   `main`), merge to `main`, and `main` publishes `5.0.0`.
 
+## Deploy SQL Database
+
+Reusable workflow that publishes a dacpac to Azure SQL, authenticating with the same OIDC
+federated credential as the other Azure workflows here.
+
+```yaml
+  database:
+    concurrency:
+      group: myapp-database
+      cancel-in-progress: false      # never cancel a schema deployment part-way
+    needs: [build, test]
+    uses: AndrewMcLachlan/actions/.github/workflows/deploy-sql-database.yml@v4
+    with:
+      environment: Production
+      artifact-name: database
+      server-name: myserver          # the resource name, not the FQDN
+      database-name: MyDatabase
+      resource-group: MyResourceGroup
+      publish-profile: src/My.Database/Prod.publish.xml
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+```
+
+The dacpac is expected as a build artifact. Produce one with
+`dotnet build src/My.Database/My.Database.sqlproj -c Release` and upload
+`src/My.Database/bin/Release/*.dacpac`.
+
+### Prerequisites
+
+Two grants are needed, neither of which the workflow can make for itself.
+
+**1. A contained database user, per database.** Run as an Entra admin on the server:
+
+```sql
+CREATE USER [<app-registration-name>] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_owner ADD MEMBER [<app-registration-name>];
+```
+
+`db_owner` is genuinely required: schema changes, plus whatever the pre/post-deployment scripts do.
+
+**2. Permission to open the firewall**, on the SQL server resource — `SQL Server Contributor`, or a
+custom role with `Microsoft.Sql/servers/firewallRules/*`.
+
+### How it reaches the database
+
+GitHub-hosted runners have dynamic public addresses from a large pool, and *Allow Azure services
+and resources to access this server* does not cover them. So each run opens a firewall rule for its
+own address alone, deploys, and closes it.
+
+The rule has one fixed name per calling repository, and **every run deletes it before creating it**.
+That is deliberate: the closing step uses `!cancelled()` rather than `always()`, because a step that
+ignores cancellation is how a job becomes uncancellable — so a cancelled run cannot tidy up after
+itself, and the next run does it instead. Nothing accumulates, and no run can be wedged open.
+
+### The publish profile
+
+`publish-profile` is optional and supplies **deployment options only** — `BlockOnPossibleDataLoss`,
+the `Exclude*` settings, and so on. The server and database always come from the inputs.
+
+`TargetConnectionString`, `TargetServerName` and `TargetDatabaseName` are removed from a copy of
+the profile before it is used, rather than being left for the command line to override. A
+connection string that specifies `Authentication` cannot be combined with an access token — the
+client rejects the pair — and depending on whether a profile or an argument wins is a poor bet
+when losing it means deploying somewhere other than the database you named.
+
+Two options are worth checking in any profile used here: `ExcludeUsers` and `ExcludeLogins` should
+be `True`, or a deployment can drop the very contained user it is authenticating as.
+
+### The deployment script
+
+Every run generates the deployment script before applying it, and uploads it as an artifact whether
+the deployment succeeds or fails. Where a profile sets `BlockOnPossibleDataLoss` to `False`, that
+artifact is the only record of what a deployment actually did.
+
+Pass `script-only: true` to generate the script without running it — useful on pull requests to see
+what a merge would do.
+
 ## Releasing
 
 This repo publishes reusable actions that consumers reference by tag (e.g. `andrewmclachlan/actions/set-version-number@v4`). Releases follow the **moving major tag** convention: alongside an immutable full version tag (`v4.5`, `v4.5.2`), a `v<MAJOR>` tag (`v4`) is kept pointing at the latest release in that major line. Consumers pin `@v4` and automatically pick up the newest `v4.x`.

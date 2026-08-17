@@ -1,0 +1,220 @@
+name: Deploy SQL Database
+on:
+  workflow_call:
+    inputs:
+        environment:
+          description: >-
+            Environment to gate this job on. Leave unset when a job upstream already
+            holds the approval, so this one does not ask for it a second time.
+          type: string
+          required: false
+          default: ''
+        artifact-name:
+          description: 'Name of the artifact containing the dacpac'
+          type: string
+          required: true
+        server-name:
+          description: 'Azure SQL logical server *resource* name, e.g. contoso (not the FQDN)'
+          type: string
+          required: true
+        database-name:
+          description: 'Database to deploy to'
+          type: string
+          required: true
+        resource-group:
+          description: 'Resource group holding the SQL server, needed to open the firewall'
+          type: string
+          required: true
+        publish-profile:
+          description: >-
+            Optional path in the calling repository to a .publish.xml. Its deployment options are
+            used; its connection details are ignored in favour of the inputs here.
+          type: string
+          required: false
+          default: ''
+        dacpac-path:
+          description: 'Path to the dacpac within the artifact. Found automatically when omitted.'
+          type: string
+          required: false
+          default: ''
+        script-only:
+          description: 'Produce the deployment script but do not run it'
+          type: boolean
+          required: false
+          default: false
+    secrets:
+      AZURE_CLIENT_ID:
+        description: 'Azure client ID'
+        required: true
+      AZURE_TENANT_ID:
+        description: 'Azure tenant ID'
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        description: 'Azure subscription ID'
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-database:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      # One rule per calling repository, so a run can clear its own leftovers without touching
+      # anybody else's. See the firewall step for why that matters.
+      FIREWALL_RULE_NAME: gh-deploy-${{ github.event.repository.name }}
+    steps:
+
+      - name: Checkout (for the publish profile)
+        if: inputs.publish-profile != ''
+        uses: actions/checkout@v7
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Download dacpac
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: dacpac-download
+
+      - name: Locate the dacpac
+        id: dacpac
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.dacpac-path }}" ]; then
+            path="dacpac-download/${{ inputs.dacpac-path }}"
+            [ -f "$path" ] || { echo "::error::No dacpac at $path"; exit 1; }
+          else
+            # -type f: a * in -name matches an empty string, so a directory called .dacpac
+            # would otherwise answer as well as the file inside it.
+            mapfile -t found < <(find dacpac-download -type f -name '*.dacpac')
+            case ${#found[@]} in
+              0) echo "::error::The artifact contains no dacpac"; exit 1 ;;
+              1) path="${found[0]}" ;;
+              *) printf '::error::The artifact contains %d dacpacs; set dacpac-path to choose one\n' "${#found[@]}"
+                 printf '  %s\n' "${found[@]}"
+                 exit 1 ;;
+            esac
+          fi
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "::notice::Deploying $(basename "$path") to ${{ inputs.database-name }}"
+
+      - name: Install SqlPackage
+        run: |
+          set -euo pipefail
+          curl -sSL -o /tmp/sqlpackage.zip https://aka.ms/sqlpackage-linux
+          unzip -q /tmp/sqlpackage.zip -d /tmp/sqlpackage
+          chmod +x /tmp/sqlpackage/sqlpackage
+          /tmp/sqlpackage/sqlpackage /Version
+
+      - name: Open the firewall for this runner
+        run: |
+          set -euo pipefail
+          ip=$(curl -sS --fail --max-time 10 https://api.ipify.org)
+          [ -n "$ip" ] || { echo "::error::Could not determine the runner's public address"; exit 1; }
+          echo "::notice::Opening ${{ inputs.server-name }} to $ip"
+
+          # A cancelled run cannot clean up after itself -- the removal step below deliberately
+          # does not use always(), because a step that ignores cancellation is how a job becomes
+          # uncancellable. So every run starts by clearing the rule it is about to create. One
+          # fixed name per repository means leftovers are replaced rather than accumulating.
+          az sql server firewall-rule delete \
+            --resource-group "${{ inputs.resource-group }}" \
+            --server "${{ inputs.server-name }}" \
+            --name "$FIREWALL_RULE_NAME" 2>/dev/null || true
+
+          az sql server firewall-rule create \
+            --resource-group "${{ inputs.resource-group }}" \
+            --server "${{ inputs.server-name }}" \
+            --name "$FIREWALL_RULE_NAME" \
+            --start-ip-address "$ip" --end-ip-address "$ip" \
+            --output none
+
+      - name: Take the deployment options from the publish profile
+        if: inputs.publish-profile != ''
+        run: |
+          set -euo pipefail
+          [ -f "${{ inputs.publish-profile }}" ] || { echo "::error::No publish profile at ${{ inputs.publish-profile }}"; exit 1; }
+
+          # Connection details are removed rather than left to be overridden by the arguments
+          # below, for two reasons. A connection string carrying an Authentication keyword cannot
+          # be combined with an access token -- SqlClient rejects the pair -- and the precedence
+          # between a profile and a command-line argument is not something worth depending on when
+          # being wrong means deploying to a different database than the one asked for.
+          #
+          # What remains is the deployment options, which stay the calling repository's to decide.
+          python3 - "${{ inputs.publish-profile }}" "$RUNNER_TEMP/ci.publish.xml" <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          ns = "http://schemas.microsoft.com/developer/msbuild/2003"
+          ET.register_namespace("", ns)
+          tree = ET.parse(sys.argv[1])
+          dropped = []
+          for parent in tree.getroot().iter():
+              for child in list(parent):
+                  if child.tag.split("}")[-1] in ("TargetConnectionString", "TargetDatabaseName", "TargetServerName"):
+                      parent.remove(child)
+                      dropped.append(child.tag.split("}")[-1])
+          tree.write(sys.argv[2], encoding="utf-8", xml_declaration=True)
+          print(f"::notice::Using deployment options from the publish profile; ignored {', '.join(dropped) or 'nothing'}")
+          PY
+
+      - name: Deploy
+        run: |
+          set -euo pipefail
+
+          # Authenticates with the identity azure/login established, which the target database
+          # must recognise -- see the README for the grant that requires.
+          token=$(az account get-access-token --resource https://database.windows.net/ --query accessToken -o tsv)
+
+          args=(
+            /SourceFile:"${{ steps.dacpac.outputs.path }}"
+            /TargetServerName:"${{ inputs.server-name }}.database.windows.net"
+            /TargetDatabaseName:"${{ inputs.database-name }}"
+            /AccessToken:"$token"
+          )
+
+          if [ -n "${{ inputs.publish-profile }}" ]; then
+            args+=(/Profile:"$RUNNER_TEMP/ci.publish.xml")
+          fi
+
+          # Always scripted first. The script is the record of what this deployment did, which
+          # matters most where the profile allows data loss -- there is otherwise nothing to read
+          # afterwards but the schema itself.
+          /tmp/sqlpackage/sqlpackage /Action:Script "${args[@]}" \
+            /OutputPath:deployment-script.sql
+
+          if [ "${{ inputs.script-only }}" = "true" ]; then
+            echo "::notice::script-only: generated the deployment script without running it"
+            exit 0
+          fi
+
+          /tmp/sqlpackage/sqlpackage /Action:Publish "${args[@]}"
+
+      - name: Upload the deployment script
+        # Wanted whether the deploy worked or not -- a failed publish is exactly when you want to
+        # read what it was trying to do. Not always(): see the firewall step.
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: deployment-script-${{ inputs.environment }}-${{ inputs.database-name }}
+          path: deployment-script.sql
+          if-no-files-found: warn
+
+      - name: Close the firewall
+        if: ${{ !cancelled() }}
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group "${{ inputs.resource-group }}" \
+            --server "${{ inputs.server-name }}" \
+            --name "$FIREWALL_RULE_NAME" 2>/dev/null || true
+
+      - name: logout
+        if: ${{ !cancelled() }}
+        run: |
+          az logout

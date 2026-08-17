@@ -3,9 +3,12 @@ on:
   workflow_call:
     inputs:
         environment:
-          description: 'Environment to deploy to'
+          description: >-
+            Environment to gate this job on. Leave unset when a job upstream already
+            holds the approval, so this one does not ask for it a second time.
           type: string
-          required: true
+          required: false
+          default: ''
         app-name:
           description: 'Azure Web App name'
           type: string
