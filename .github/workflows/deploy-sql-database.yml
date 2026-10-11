@@ -200,7 +200,7 @@ jobs:
         # Wanted whether the deploy worked or not -- a failed publish is exactly when you want to
         # read what it was trying to do. Not always(): see the firewall step.
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: deployment-script-${{ inputs.environment }}-${{ inputs.database-name }}
           path: deployment-script.sql
